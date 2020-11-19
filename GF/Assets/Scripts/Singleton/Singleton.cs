@@ -5,7 +5,9 @@ namespace GF
     public class Singleton<T> : ISingleton where T : Singleton<T>
     {
         private static object m_Lock = new object();
+
         private static T m_Instance;
+
         public static T Instance
         {
             get

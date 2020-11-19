@@ -24,6 +24,7 @@ namespace GF
             if (instance == null)
             {
                 var obj = new GameObject(typeof(T).Name);
+                GameObject.DontDestroyOnLoad(obj);
                 instance = obj.AddComponent<T>();
             }
 
