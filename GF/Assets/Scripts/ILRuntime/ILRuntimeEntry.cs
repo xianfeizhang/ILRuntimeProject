@@ -1,5 +1,6 @@
 ﻿using ILRuntime.CLR.Method;
 using ILRuntime.CLR.TypeSystem;
+using ILRuntime.Mono.Cecil.Pdb;
 using ILRuntime.Runtime.Enviorment;
 using System.Collections.Generic;
 using System.IO;
@@ -11,27 +12,37 @@ namespace GF
     {
         public AppDomain appDomain;
 
-        FileStream fs;
+        FileStream scriptFS;
+        FileStream pdbFS;
 
         private void Start()
         {
             appDomain = new AppDomain();
 
-            //RegisterDelegates();
+            RegisterDelegates();
 
             string filePath = "GFScripts/bin/Debug/GFScripts.dll";
             if (!FileHelper.Exists(filePath))
             {
-                Debug.LogError("[ILRuntimeEntry]File not found: " + filePath);
+                Debug.LogError("[ILRuntimeEntry] Start File not found: " + filePath);
                 return;
             }
+
             string pdbPath = Path.ChangeExtension(filePath, ".pdb");
 
-            fs = new FileStream(filePath, FileMode.Open);
+            scriptFS = new FileStream(filePath, FileMode.Open);
 
-            appDomain.LoadAssembly(fs);
+#if UNITY_EDITOR
+            pdbFS = new FileStream(pdbPath, FileMode.Open);
+            appDomain.LoadAssembly(scriptFS, pdbFS, new PdbReaderProvider());
+            appDomain.DebugService.StartDebugService(56000);
+#else
+            appDomain.LoadAssembly(scriptFS);
+#endif
+            //调用热更入口
+            appDomain.Invoke("GFScripts.CustomEntry", "HelloWorld", null);
 
-            TestILRuntime();
+            //TestILRuntime();
         }
 
         void TestILRuntime()
@@ -97,11 +108,15 @@ namespace GF
 
         private void OnDestroy()
         {
-            if (fs != null)
+            if (scriptFS != null)
             {
-                fs.Close();
+                scriptFS.Dispose();
             }
-            fs = null;
+
+            if (pdbFS != null)
+            {
+                pdbFS.Dispose();
+            }
         }
 
         void RegisterDelegates()
